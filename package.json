@@ -1,0 +1,51 @@
+{
+    "name": "@webstd-ui/view",
+    "version": "0.1.0",
+    "description": "Define the visual elements of your web app using a hierarchy of views",
+    "author": "mark@malstrom.me",
+    "license": "MIT",
+    "type": "module",
+    "module": "dist/webstd-ui-view.js",
+    "types": "dist/src/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/webstd-ui-view.js"
+        }
+    },
+    "sideEffects": false,
+    "homepage": "https://github.com/webstd-ui/view#readme",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/webstd-ui/view.git"
+    },
+    "files": [
+        "dist/**"
+    ],
+    "scripts": {
+        "dev": "vite dev",
+        "build": "vite build && tsc -b",
+        "clean": "git clean -fX .",
+        "prepublishOnly": "rm -rf dist && npm run build"
+    },
+    "resolutions": {
+        "@webstd-ui/observable": "file:../observable"
+    },
+    "dependencies": {
+        "@webstd-ui/observable": "file:../observable",
+        "lit-html": "^2.8.0"
+    },
+    "devDependencies": {
+        "@rollup/plugin-typescript": "^11.1.2",
+        "@vue/reactivity": "^3.3.4",
+        "tslib": "^2.6.2",
+        "typescript": "^5.2.1-rc",
+        "vite": "^4.4.9"
+    },
+    "prettier": {
+        "printWidth": 100,
+        "tabWidth": 4,
+        "singleQuote": false,
+        "semi": false,
+        "arrowParens": "avoid"
+    }
+}
