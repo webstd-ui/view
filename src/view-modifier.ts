@@ -16,6 +16,13 @@ export namespace ViewModifier {
     }
 }
 
+/**
+ * A modifier that you apply to an element, modifying the behavior of the
+ * original element.
+ *
+ * Adopt the `ViewModifier` interface when you want to create a reusable
+ * modifier that you can apply to any element.
+ */
 export interface ViewModifier<Content extends Element, Params extends Array<any> = Array<never>> {
     body?: (context: ViewModifier.Context<Content, Params>) => TemplateResult
     updateView?: (
@@ -23,8 +30,11 @@ export interface ViewModifier<Content extends Element, Params extends Array<any>
     ) => TemplateResult | undefined | void
 }
 
-type Modifier<Params extends Array<any>> = (...args: Params) => DirectiveResult
+export type Modifier<Params extends Array<any>> = (...args: Params) => DirectiveResult
 
+/**
+ * Creates a modifier function from a `ViewModifier`-conforming class constructor
+ */
 export function modifier<Content extends Element, Params extends Array<any> = Array<never>>(
     Modifier: Constructor<ViewModifier<Content, Params>>
 ): Modifier<Params> {

@@ -1,38 +1,44 @@
 import { atom } from "@webstd-ui/observable"
-import { View } from "."
+import { View } from "@webstd-ui/view"
+import { PropertyDecoratorContext } from "./types"
+import { getMetadataFromContext, getMetadataFromView } from "./utils"
 
 // FIXME: This doesn't work for private properties
 
-type PropertyContext =
-    | ClassAccessorDecoratorContext
-    | ClassGetterDecoratorContext
-    | ClassFieldDecoratorContext
-
+/** @private */
 const StateSymbol = Symbol()
 
-export function initializeStatefulProperties(instance: View) {
-    const prototype = Object.getPrototypeOf(instance)
-    const metadata = prototype.constructor[(Symbol as any).metadata]
-    const statefulProps: string[] = (metadata[StateSymbol] ??= [])
+/** @private */
+export function initializeStatefulProperty(prop: string, view: View) {
+    let backingAtom = Symbol(`__$$${prop}`)
 
-    for (const prop of statefulProps) {
-        let v = (instance as any)[prop]
-        let backingAtom = Symbol(`__$$${prop}`)
+    Object.defineProperty(view, backingAtom, { value: atom((view as any)[prop]) })
 
-        Object.defineProperty(instance, backingAtom, { value: atom(v) })
+    Object.defineProperty(view, prop, {
+        get() {
+            return (view as any)[backingAtom].value
+        },
+        set(v) {
+            ;(view as any)[backingAtom].value = v
+        },
+    })
+}
 
-        Object.defineProperty(instance, prop, {
-            get() {
-                return (instance as any)[backingAtom].value
-            },
-            set(v) {
-                ;(instance as any)[backingAtom].value = v
-            },
-        })
+/** @private */
+export function initializeStatefulProperties(view: View) {
+    for (const prop of getMetadataFromView(view, StateSymbol)) {
+        initializeStatefulProperty(prop, view)
     }
 }
 
-export function State(_target: undefined, context: PropertyContext) {
+/**
+ * A decorator that can read and write a stateful value.
+ *
+ * Use state as the single source of truth for a given value that you
+ * store in a view hierarchy. Create a state value in a View by applying
+ * the `@State` decorator to a property declaration and providing an initial value.
+ */
+export function State(_target: undefined, context: PropertyDecoratorContext) {
     if (context.static) {
         throw new Error("@State can only be applied to instance members.")
     }
@@ -41,7 +47,6 @@ export function State(_target: undefined, context: PropertyContext) {
         throw new Error("@State cannot be applied to symbol-named properties.")
     }
 
-    const metadata = (context as any).metadata
-    const statefulProps: string[] = (metadata[StateSymbol] ??= [])
+    const statefulProps: string[] = getMetadataFromContext(context, StateSymbol)
     statefulProps.push(context.name)
 }
