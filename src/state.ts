@@ -1,12 +1,10 @@
 import { atom } from "@webstd-ui/observable"
 import { View } from "@webstd-ui/view"
 import { PropertyDecoratorContext } from "./types"
-import { getMetadataFromContext, getMetadataFromView } from "./utils"
+import { getMetadataFromContext } from "./utils"
+import { Installable, InstallableSymbol } from "./installable"
 
 // FIXME: This doesn't work for private properties
-
-/** @private */
-const StateSymbol = Symbol()
 
 /** @private */
 export function initializeStatefulProperty(prop: string, view: View) {
@@ -22,13 +20,6 @@ export function initializeStatefulProperty(prop: string, view: View) {
             ;(view as any)[backingAtom].value = v
         },
     })
-}
-
-/** @private */
-export function initializeStatefulProperties(view: View) {
-    for (const prop of getMetadataFromView(view, StateSymbol)) {
-        initializeStatefulProperty(prop, view)
-    }
 }
 
 /**
@@ -47,6 +38,7 @@ export function State(_target: undefined, context: PropertyDecoratorContext) {
         throw new Error("@State cannot be applied to symbol-named properties.")
     }
 
-    const statefulProps: string[] = getMetadataFromContext(context, StateSymbol)
-    statefulProps.push(context.name)
+    const prop = context.name
+    const installables: Installable[] = getMetadataFromContext(context, InstallableSymbol)
+    installables.push(view => initializeStatefulProperty(prop, view))
 }

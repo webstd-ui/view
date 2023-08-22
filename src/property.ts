@@ -10,6 +10,7 @@ const PropertySymbol = Symbol()
 
 /** @private */
 export type ExposedAttributes = { name: string; private: boolean }[]
+/** @private */
 export type ExposedProps = (Property.Options & { name: string })[]
 
 /** @private */

@@ -1,9 +1,10 @@
 import { TemplateResult, render } from "lit-html"
 import { withObservationTracking } from "@webstd-ui/observable"
 import { ViewConstructor } from "./types"
-import { initializeStatefulProperties } from "./state"
 import { ExposedAttributes, exposeProperties } from "./property"
 import { EnvironmentDispatches, bindEnvironmentValues } from "./environment"
+import { getMetadataFromView } from "./utils"
+import { Installable, InstallableSymbol } from "./installable"
 
 /**
  * A type that represents part of your app's user interface and provides
@@ -56,16 +57,23 @@ export function buildElementFromView(View: ViewConstructor): CustomElementConstr
     return class extends HTMLElement {
         #root: ShadowRoot
         #view: View
+
         #attrs: ExposedAttributes
         #dispatchables: EnvironmentDispatches
 
         constructor() {
             super()
+
             this.#root = this.attachShadow({ mode: "open" })
             this.#view = new View(this)
+
             this.#attrs = exposeProperties(this.#view, this)
             this.#dispatchables = bindEnvironmentValues(this.#view, this)
-            initializeStatefulProperties(this.#view)
+
+            const installables = getMetadataFromView(this.#view, InstallableSymbol) as Installable[]
+            for (const installOn of installables) {
+                installOn(this.#view, this)
+            }
         }
 
         attributeChangedCallback(name: string, _oldValue: any, newValue: any) {

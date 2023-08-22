@@ -11,3 +11,6 @@ export { Property } from "./property"
 export type { ViewModifier, Modifier } from "./view-modifier"
 export { modifier } from "./view-modifier"
 export { EnvironmentKey, Environment } from "./environment"
+
+export type { Installable } from "./installable"
+export { getInstallablesFromContext } from "./installable"
