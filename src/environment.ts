@@ -1,8 +1,8 @@
 import { Observable, ObservationIgnored, withObservationTracking } from "@webstd-ui/observable"
 import { View, html, Property, CustomElement } from "@webstd-ui/view"
-import { Context, ContextCallback, ContextEvent, createContext } from "./context"
+import { Context, ContextCallback, ContextEvent, createContext } from "./internals/context"
 import { PropertyDecoratorContext } from "./types"
-import { getViewContext } from "./view-context"
+import { getViewContext } from "./internals/view-context"
 
 /** @private */
 @Observable

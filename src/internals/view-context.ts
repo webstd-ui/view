@@ -1,5 +1,5 @@
 import { View } from "@webstd-ui/view"
-import { PropertyDecoratorContext } from "./types"
+import { PropertyDecoratorContext } from "../types"
 import { typedEventTarget } from "./generic-event-target"
 import { getMetadataFromContext, getMetadataFromView } from "./utils"
 

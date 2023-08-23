@@ -1,7 +1,7 @@
 import { initializeStatefulProperty } from "./state"
 import { PropertyDecoratorContext } from "./types"
 import { withObservationTracking } from "@webstd-ui/observable"
-import { getViewContext } from "./view-context"
+import { getViewContext } from "./internals/view-context"
 
 function initializeStorage(view: any, prop: string, key: string, storage: Storage) {
     let skipSave = true

@@ -1,5 +1,5 @@
 import { View } from "@webstd-ui/view"
-import { PropertyDecoratorContext } from "./types"
+import { PropertyDecoratorContext } from "../types"
 
 /** @private */
 export function getMetadataFromContext<T = unknown>(

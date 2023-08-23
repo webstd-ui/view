@@ -1,7 +1,7 @@
 import { PropertyDecoratorContext } from "./types"
 import { initializeStatefulProperty } from "./state"
-import { getViewContext } from "./view-context"
-import { getMetadataFromContext, getMetadataFromView, setMetadataOnView } from "./utils"
+import { getViewContext } from "./internals/view-context"
+import { getMetadataFromContext, getMetadataFromView, setMetadataOnView } from "./internals/utils"
 
 type Attribute = { propName: string; name: string; private: boolean }
 type Prop = Property.Options & { name: string }

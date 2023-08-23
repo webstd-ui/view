@@ -1,6 +1,6 @@
 import { atom } from "@webstd-ui/observable"
 import { PropertyDecoratorContext } from "./types"
-import { getViewContext } from "./view-context"
+import { getViewContext } from "./internals/view-context"
 
 // FIXME: This doesn't work for private properties
 

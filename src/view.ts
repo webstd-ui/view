@@ -7,7 +7,7 @@ import {
     ViewDissapearEvent,
     ViewInitializeEvent,
     getViewContext,
-} from "./view-context"
+} from "./internals/view-context"
 
 /**
  * A type that represents part of your app's user interface and provides
