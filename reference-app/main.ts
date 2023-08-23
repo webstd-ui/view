@@ -49,12 +49,15 @@ export class Child implements View {
     @Environment(LibraryKey)
     library?: Library
 
-    // FIXME: Attribute handling not working
     @Property({ attribute: "my-attr" })
     myAttr = "Hello, World"
 
     onAppear() {
-        console.log("app-child myAttr: ", this.myAttr)
+        withObservationTracking(() => {
+            // TODO: Override initial property value with initial attr value?
+            // Currently this logs "Hello, World" once, then the externally set value
+            console.log("app-child myAttr: ", this.myAttr)
+        })
     }
 
     get body() {

@@ -1,52 +1,13 @@
-// @Property/@Attribute
-
-import { View } from "@webstd-ui/view"
 import { PropertyDecoratorContext } from "./types"
 import { initializeStatefulProperty } from "./state"
-import { getMetadataFromContext, getMetadataFromView } from "./utils"
+import { getViewContext } from "./view-context"
+import { getMetadataFromContext, getMetadataFromView, setMetadataOnView } from "./utils"
 
-/** @private */
-const PropertySymbol = Symbol()
+type Attribute = { propName: string; name: string; private: boolean }
+type Prop = Property.Options & { name: string }
 
-/** @private */
-export type ExposedAttributes = { name: string; private: boolean }[]
-/** @private */
-export type ExposedProps = (Property.Options & { name: string })[]
-
-/** @private */
-export function exposeProperties(view: View, element: HTMLElement): ExposedAttributes {
-    const exposedProps: ExposedProps = getMetadataFromView(view, PropertySymbol)
-
-    for (const prop of exposedProps) {
-        initializeStatefulProperty(prop.name, view)
-
-        if (prop.public) {
-            Object.defineProperty(element, prop.name, {
-                get() {
-                    return (view as any)[prop.name]
-                },
-                set(v) {
-                    ;(view as any)[prop.name] = v
-                },
-            })
-        }
-    }
-
-    const exposedAttrs = exposedProps
-        .filter(prop => !!prop.attribute)
-        .filter(Boolean)
-        .map(prop => ({
-            name: prop.attribute === true ? prop.name : (prop.attribute as string),
-            private: !prop.public!,
-        }))
-
-    const ElementConstructor = Object.getPrototypeOf(element).constructor
-    Object.defineProperty(ElementConstructor, "observedAttributes", {
-        value: exposedAttrs.map(attr => attr.name),
-    })
-
-    return exposedAttrs
-}
+const AttributesSymbol = Symbol()
+const AttributesInstalledSymbol = Symbol()
 
 export namespace Property {
     export interface Options {
@@ -55,7 +16,6 @@ export namespace Property {
     }
 }
 
-/** @private */
 const defaultPropertyOptions: Property.Options = {
     attribute: false,
     public: true,
@@ -87,7 +47,84 @@ export function Property(options: Property.Options = {}) {
             throw new Error("@Property cannot be applied to symbol-named properties.")
         }
 
-        const exposedProps: ExposedProps = getMetadataFromContext(context, PropertySymbol)
-        exposedProps.push({ name: context.name, ...options })
+        const name = context.name
+        getViewContext(context).addInitializer(ctx => {
+            exposeProperty({ name, ...options }, context, ctx.view, ctx.element)
+            if (!!options.attribute) initializeAttributeObservation(ctx.view, ctx.element)
+        })
+    }
+}
+
+function exposeProperty(prop: Prop, context: any, view: any, element: HTMLElement) {
+    initializeStatefulProperty(prop.name, view)
+
+    if (prop.public) {
+        // Expose the stateful property on the HTMLElement if the property
+        // is set to public
+        Object.defineProperty(element, prop.name, {
+            get() {
+                return view[prop.name]
+            },
+            set(v) {
+                view[prop.name] = v
+            },
+        })
+    }
+
+    // prop.attribute is truthy
+    if (!!prop.attribute) {
+        const attr: Attribute = {
+            propName: prop.name,
+            name: prop.attribute === true ? prop.name : (prop.attribute as string),
+            private: !prop.public!,
+        }
+
+        const observedAttributes = getMetadataFromContext<Attribute[]>(
+            context,
+            AttributesSymbol,
+            []
+        )
+        observedAttributes.push(attr)
+    }
+}
+
+function initializeAttributeObservation(view: any, element: any) {
+    const attributesAreInstalled = getMetadataFromView<boolean>(
+        view,
+        AttributesInstalledSymbol,
+        false
+    )
+
+    if (!attributesAreInstalled) {
+        let observer = new MutationObserver(changeSet => {
+            const observedAttributes = getMetadataFromView<Attribute[]>(view, AttributesSymbol, [])
+            const attrs = observedAttributes.map($0 => $0.name)
+            let observedChanges = changeSet.filter($0 => attrs.includes($0.attributeName ?? ""))
+
+            // If we don't have anything to observe, bail before looping
+            if (!observedChanges.length) return
+
+            for (let change of observedChanges) {
+                let attr: Attribute | undefined
+                if ((attr = observedAttributes.find(attr => attr.name === change.attributeName))) {
+                    // TODO: Transform value based on decorator metadata
+                    if (attr.private) {
+                        // If the attribute is private, update the property on the view
+                        view[attr.propName] = (change.target as HTMLElement).getAttribute(
+                            change.attributeName!
+                        )
+                    } else {
+                        // If the attribute is public, update the bound property on the element
+                        element[attr.propName] = (change.target as HTMLElement).getAttribute(
+                            change.attributeName!
+                        )
+                    }
+                }
+            }
+        })
+
+        observer.observe(element, { attributes: true })
+
+        setMetadataOnView(view, AttributesInstalledSymbol, true)
     }
 }
