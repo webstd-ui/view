@@ -1,12 +1,14 @@
-import { View } from "."
+import { View } from "@webstd-ui/view"
 
 export interface Constructor<T> {
     new (): T
 }
 
-export interface ViewConstructor {
-    new (element: HTMLElement): View
-}
+export type ViewConstructor = Constructor<View>
+
+// export interface ViewConstructor {
+//     new (element: HTMLElement): View
+// }
 
 export interface ToString {
     toString(): string

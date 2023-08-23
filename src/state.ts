@@ -1,23 +1,21 @@
 import { atom } from "@webstd-ui/observable"
-import { View } from "@webstd-ui/view"
 import { PropertyDecoratorContext } from "./types"
-import { getMetadataFromContext } from "./utils"
-import { Installable, InstallableSymbol } from "./installable"
+import { getViewContext } from "./view-context"
 
 // FIXME: This doesn't work for private properties
 
 /** @private */
-export function initializeStatefulProperty(prop: string, view: View) {
-    let backingAtom = Symbol(`__$$${prop}`)
+export function initializeStatefulProperty(prop: string, view: any) {
+    let backingAtom = Symbol(`__$${prop}`)
 
-    Object.defineProperty(view, backingAtom, { value: atom((view as any)[prop]) })
+    Object.defineProperty(view, backingAtom, { value: atom(view[prop]) })
 
     Object.defineProperty(view, prop, {
         get() {
-            return (view as any)[backingAtom].value
+            return view[backingAtom].value
         },
         set(v) {
-            ;(view as any)[backingAtom].value = v
+            view[backingAtom].value = v
         },
     })
 }
@@ -39,6 +37,7 @@ export function State(_target: undefined, context: PropertyDecoratorContext) {
     }
 
     const prop = context.name
-    const installables: Installable[] = getMetadataFromContext(context, InstallableSymbol)
-    installables.push(view => initializeStatefulProperty(prop, view))
+    getViewContext(context).addInitializer(ctx => {
+        initializeStatefulProperty(prop, ctx.view)
+    })
 }

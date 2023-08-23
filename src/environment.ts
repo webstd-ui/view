@@ -2,7 +2,7 @@ import { Observable, ObservationIgnored, withObservationTracking } from "@webstd
 import { View, html, Property, CustomElement } from "@webstd-ui/view"
 import { Context, ContextCallback, ContextEvent, createContext } from "./context"
 import { PropertyDecoratorContext } from "./types"
-import { getMetadataFromContext, getMetadataFromView } from "./utils"
+import { getViewContext } from "./view-context"
 
 /** @private */
 @Observable
@@ -74,19 +74,18 @@ export class EnvironmentKey<Value> {
 
         @CustomElement(key)
         class EnvironmentProviderView implements View {
-            #element: HTMLElement
             @Property() value: Value
 
-            constructor(element: HTMLElement) {
-                this.#element = element
+            constructor() {
                 this.value = defaultValue
-            }
 
-            onAppear() {
-                const provider = new EnvironmentProvider(ctx, this.#element)
+                getViewContext(this).onAppear(event => {
+                    const provider = new EnvironmentProvider(ctx, event.element)
 
-                withObservationTracking(() => {
-                    provider.data = this.value
+                    // FIXME: This should probably be computed instead of synchronized
+                    withObservationTracking(() => {
+                        provider.data = this.value
+                    })
                 })
             }
 
@@ -95,38 +94,6 @@ export class EnvironmentKey<Value> {
             }
         }
     }
-}
-
-/** @private */
-const EnvironmentSymbol = Symbol()
-
-/** @private */
-type EnvironmentBindings<Value> = { propName: string; context: Context<Value> }[]
-
-/** @private */
-export type EnvironmentDispatches = (() => void)[]
-
-/** @private */
-export function bindEnvironmentValues(view: View, element: HTMLElement): EnvironmentDispatches {
-    const environmentBindings: EnvironmentBindings<any> = getMetadataFromView(
-        view,
-        EnvironmentSymbol
-    )
-
-    const dispatches: EnvironmentDispatches = []
-
-    for (const binding of environmentBindings) {
-        let consumer = new EnvironmentConsumer(binding.context, element)
-        dispatches.push(consumer.dispatch)
-
-        Object.defineProperty(view, binding.propName, {
-            get() {
-                return consumer.data
-            },
-        })
-    }
-
-    return dispatches
 }
 
 /**
@@ -152,10 +119,19 @@ export function Environment<Value>(key: EnvironmentKey<Value>) {
             throw new Error("@Environment cannot be applied to symbol-named properties.")
         }
 
-        const environmentBindings: EnvironmentBindings<Value> = getMetadataFromContext(
-            context,
-            EnvironmentSymbol
-        )
-        environmentBindings.push({ propName: context.name, context: key.context })
+        const viewContext = getViewContext(context)
+        let consumer!: EnvironmentConsumer<Value>
+
+        viewContext.addInitializer(ctx => {
+            consumer = new EnvironmentConsumer(key.context, ctx.element)
+
+            Object.defineProperty(ctx.view, context.name, {
+                get() {
+                    return consumer.data
+                },
+            })
+        })
+
+        viewContext.onAppear(() => consumer.dispatch())
     }
 }

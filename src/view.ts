@@ -1,10 +1,13 @@
-import { TemplateResult, render } from "lit-html"
+import { TemplateResult, render as diff } from "lit-html"
 import { withObservationTracking } from "@webstd-ui/observable"
 import { ViewConstructor } from "./types"
-import { ExposedAttributes, exposeProperties } from "./property"
-import { EnvironmentDispatches, bindEnvironmentValues } from "./environment"
-import { getMetadataFromView } from "./utils"
-import { Installable, InstallableSymbol } from "./installable"
+import {
+    ViewAppearEvent,
+    ViewContext,
+    ViewDissapearEvent,
+    ViewInitializeEvent,
+    getViewContext,
+} from "./view-context"
 
 /**
  * A type that represents part of your app's user interface and provides
@@ -52,70 +55,45 @@ export function CustomElement<ViewCtor extends ViewConstructor>(tagName: string)
     }
 }
 
-/** @private */
-export function buildElementFromView(View: ViewConstructor): CustomElementConstructor {
+function buildElementFromView(View: ViewConstructor): CustomElementConstructor {
     return class extends HTMLElement {
         #root: ShadowRoot
         #view: View
-
-        #attrs: ExposedAttributes
-        #dispatchables: EnvironmentDispatches
+        #context: ViewContext
 
         constructor() {
             super()
 
             this.#root = this.attachShadow({ mode: "open" })
-            this.#view = new View(this)
+            this.#view = new View()
 
-            this.#attrs = exposeProperties(this.#view, this)
-            this.#dispatchables = bindEnvironmentValues(this.#view, this)
-
-            const installables = getMetadataFromView(this.#view, InstallableSymbol) as Installable[]
-            for (const installOn of installables) {
-                installOn(this.#view, this)
-            }
+            this.#context = getViewContext(this.#view)
+            this.#context.dispatchEvent(new ViewInitializeEvent(this.#view, this))
         }
 
-        attributeChangedCallback(name: string, _oldValue: any, newValue: any) {
-            let attr: { name: string; private: boolean } | undefined
-            if ((attr = this.#attrs.find(attr => attr.name === name))) {
-                // TODO: Transform value based on decorator metadata
-                if (attr.private) {
-                    // If the attribute is private, update the property on the view
-                    ;(this.#view as any)[name] = newValue
-                } else {
-                    // If the attribute is public, update the bound property on the element
-                    ;(this as any)[name] = newValue
-                }
-            }
+        #initializeRendering() {
+            withObservationTracking(() => {
+                // Diff `view.body` with the shadow root and apply changes every
+                // time data that `view.body` depends on changes.
+                diff(this.#view.body, this.#root)
+            })
         }
 
         connectedCallback() {
             this.#view.onAppear?.()
 
+            // `task` only runs on the client
             if (typeof document !== undefined) {
-                // `task` only runs on the client
                 this.#view.task?.()
-
-                // TODO: `observedTask`?
-                // withObservationTracking(() => {
-                //     this.#view.observedTask?.()
-                // })
             }
 
-            for (const dispatch of this.#dispatchables) {
-                dispatch()
-            }
-
-            withObservationTracking(() => {
-                // Render view.body into the shadow root every time data view.body
-                // depends on changes.
-                render(this.#view.body, this.#root)
-            })
+            this.#context.dispatchEvent(new ViewAppearEvent(this.#view, this))
+            this.#initializeRendering()
         }
 
         disconnectedCallback() {
             this.#view.onDisappear?.()
+            this.#context.dispatchEvent(new ViewDissapearEvent(this.#view, this))
         }
     }
 }

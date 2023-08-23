@@ -1,7 +1,7 @@
 import { initializeStatefulProperty } from "./state"
 import { PropertyDecoratorContext } from "./types"
 import { withObservationTracking } from "@webstd-ui/observable"
-import { getInstallablesFromContext } from "./installable"
+import { getViewContext } from "./view-context"
 
 function initializeStorage(view: any, prop: string, key: string, storage: Storage) {
     let skipSave = true
@@ -52,10 +52,9 @@ export function AppStorage(key: string) {
         }
 
         const prop = context.name
-        const installables = getInstallablesFromContext(context)
-        installables.push(view => {
-            initializeStatefulProperty(prop, view)
-            initializeStorage(view, prop, key, localStorage)
+        getViewContext(context).addInitializer(ctx => {
+            initializeStatefulProperty(prop, ctx.view)
+            initializeStorage(ctx.view, prop, key, localStorage)
         })
     }
 }
@@ -71,10 +70,9 @@ export function SessionStorage(key: string) {
         }
 
         const prop = context.name
-        const installables = getInstallablesFromContext(context)
-        installables.push(view => {
-            initializeStatefulProperty(prop, view)
-            initializeStorage(view, prop, key, sessionStorage)
+        getViewContext(context).addInitializer(ctx => {
+            initializeStatefulProperty(prop, ctx.view)
+            initializeStorage(ctx.view, prop, key, sessionStorage)
         })
     }
 }
