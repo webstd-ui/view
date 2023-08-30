@@ -11,20 +11,16 @@ import {
     Property,
     EnvironmentKey,
     Environment,
+    AppStorage,
+    EmptyView,
 } from "@webstd-ui/view"
-import { AppStorage } from "src/storage"
 
 export class LinkViewModifier implements ViewModifier<HTMLAnchorElement> {
-    #isAttached = false
-
-    updateView({ content }: ViewModifier.Context<HTMLAnchorElement>) {
-        if (!this.#isAttached) {
-            content.addEventListener("click", event => {
-                event.preventDefault()
-                console.log(content.href)
-            })
-            this.#isAttached = true
-        }
+    onAppear({ target }: ViewModifier.Context<HTMLAnchorElement>) {
+        target.addEventListener("click", event => {
+            event.preventDefault()
+            console.log(target.href)
+        })
     }
 }
 
@@ -83,7 +79,7 @@ export class Other implements View {
 
     get body() {
         return html`
-            <button @click=${() => this.library?.books.push({ id: Math.random().toString() })}>
+            <button @click="${() => this.library?.books.push({ id: Math.random().toString() })}">
                 Add a Book!
             </button>
         `
@@ -120,10 +116,10 @@ export class TodoApp implements View {
                 }
             </style>
             <div>Todo App</div>
-            <button @click=${() => this.counter++}>Shared Counter: ${this.counter}</button>
+            <button @click="${() => this.counter++}">Shared Counter: ${this.counter}</button>
             <library-env>
-                <app-child my-attr=${"goodbye world"}></app-child>
-                <app-other .myProperty=${"goodbye world"}></app-other>
+                <app-child my-attr="${"goodbye world"}"></app-child>
+                <app-other .myProperty="${"goodbye world"}"></app-other>
             </library-env>
             <code>
                 ${Show(
@@ -133,7 +129,7 @@ export class TodoApp implements View {
             </code>
             <a href="https://theverge.com" ${enhanceLink()}>Go to The Verge</a>
             <span><code>@State count</code>: ${this.count}</span>
-            <span>${Show({ when: this.count % 2 === 0 }, () => html`Even Count!`)}</span>
+            <span>${this.count % 2 === 0 ? html`Even Count!` : EmptyView()}</span>
             <ul>
                 ${ForEach(this.library.books, book => html`<li>Book ${book.id}</li>`)}
             </ul>

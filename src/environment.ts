@@ -6,25 +6,26 @@ import { getViewContext } from "./internals/view-context"
 
 /** @private */
 @Observable
-export class EnvironmentConsumer<Data> {
-    @ObservationIgnored #context: Context<Data>
-    @ObservationIgnored #host: HTMLElement
+export class EnvironmentConsumer<Data extends NonFunction> {
+    #key: EnvironmentKey<Data>
+    #host: HTMLElement
+
     data: Data | undefined
 
-    constructor(context: Context<Data>, host: HTMLElement) {
+    constructor(key: EnvironmentKey<Data>, host: HTMLElement) {
         this.#host = host
-        this.#context = context
+        this.#key = key
     }
 
-    @ObservationIgnored
+    // @ObservationIgnored
     dispatch = () => {
-        const event = new ContextEvent(this.#context, value => (this.data = value))
+        const event = new ContextEvent(this.#key.context, value => (this.data = value))
         this.#host.dispatchEvent(event)
     }
 }
 
 /** @private */
-export class EnvironmentProvider<Data> {
+export class EnvironmentProvider<Data extends NonFunction> {
     #latestData: Data
     #callbacks: ContextCallback<Data>[] = []
 
@@ -41,12 +42,21 @@ export class EnvironmentProvider<Data> {
         }
     }
 
-    constructor(context: Context<Data>, host: HTMLElement) {
-        this.#latestData = context.initialValue
+    provide(value: Data) {
+        this.#latestData = value
+
+        for (const callback of this.#callbacks) {
+            // Notify all registered children of the new value
+            callback(value)
+        }
+    }
+
+    constructor(key: EnvironmentKey<Data>, host: HTMLElement) {
+        this.#latestData = key.context.initialValue
 
         host.addEventListener("context-request", (event: ContextEvent<Context<Data>>) => {
             // Is this the context we're looking for?
-            if (event.context.name === context.name) {
+            if (event.context.name === key.context.name) {
                 // Stop propagation to scope this context request to its nearest parent
                 event.stopPropagation()
                 // Provide the context request with the latest data available immediately
@@ -58,6 +68,9 @@ export class EnvironmentProvider<Data> {
     }
 }
 
+type primitive = bigint | boolean | null | number | string | symbol | undefined
+type NonFunction = object | primitive
+
 /**
  * A key for accessing values in the environment.
  *
@@ -65,32 +78,41 @@ export class EnvironmentProvider<Data> {
  * `EnvironmentKey` class. First create a new environment key instance
  * and specify a value for the required `key` and `defaultValue` properties.
  */
-export class EnvironmentKey<Value> {
+export class EnvironmentKey<Value extends NonFunction> {
     context: Context<Value>
 
-    constructor({ key, defaultValue }: { key: string; defaultValue: Value }) {
-        const ctx = createContext(key, defaultValue)
+    constructor({
+        key,
+        defaultValue,
+        createProvider = true,
+    }: {
+        key: string
+        defaultValue: Value | (() => Value)
+        createProvider?: boolean
+    }) {
+        const ctx = createContext(
+            key,
+            typeof defaultValue === "function" ? defaultValue() : defaultValue
+        )
         this.context = ctx
 
-        @CustomElement(key)
-        class EnvironmentProviderView implements View {
-            @Property() value: Value
+        if (createProvider) {
+            @CustomElement(key)
+            class EnvironmentProviderView implements View {
+                @Property() value: Value
 
-            constructor() {
-                this.value = defaultValue
+                constructor() {
+                    this.value = typeof defaultValue === "function" ? defaultValue() : defaultValue
 
-                getViewContext(this).onAppear(event => {
-                    const provider = new EnvironmentProvider(ctx, event.element)
-
-                    // FIXME: This should probably be computed instead of synchronized
-                    withObservationTracking(() => {
-                        provider.data = this.value
+                    getViewContext(this).onAppear(event => {
+                        const provider = new EnvironmentProvider({ context: ctx }, event.element)
+                        withObservationTracking(() => provider.provide(this.value))
                     })
-                })
-            }
+                }
 
-            get body() {
-                return html`<slot></slot>`
+                get body() {
+                    return html`<slot></slot>`
+                }
             }
         }
     }
@@ -109,7 +131,7 @@ export class EnvironmentKey<Value> {
  * \@Environment(ColorSchemeKey) colorScheme?: ColorScheme
  * ```
  */
-export function Environment<Value>(key: EnvironmentKey<Value>) {
+export function Environment<Value extends NonFunction>(key: EnvironmentKey<Value>) {
     return (_target: undefined, context: PropertyDecoratorContext) => {
         if (context.static) {
             throw new Error("@Environment can only be applied to instance members.")
@@ -123,7 +145,7 @@ export function Environment<Value>(key: EnvironmentKey<Value>) {
         let consumer!: EnvironmentConsumer<Value>
 
         viewContext.addInitializer(ctx => {
-            consumer = new EnvironmentConsumer(key.context, ctx.element)
+            consumer = new EnvironmentConsumer(key, ctx.element)
 
             Object.defineProperty(ctx.view, context.name, {
                 get() {

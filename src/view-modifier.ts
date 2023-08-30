@@ -1,4 +1,3 @@
-import { TemplateResult } from "lit-html"
 import {
     Directive,
     DirectiveResult,
@@ -8,10 +7,11 @@ import {
     directive,
 } from "lit-html/directive.js"
 import { Constructor } from "./types"
+import { TemplateResult } from "."
 
 export namespace ViewModifier {
-    export interface Context<Content extends Element, Params extends Array<any> = Array<never>> {
-        content: Content
+    export interface Context<Target extends Element, Params extends Array<any> = Array<never>> {
+        target: Target
         parameters: Params
     }
 }
@@ -25,9 +25,11 @@ export namespace ViewModifier {
  */
 export interface ViewModifier<Content extends Element, Params extends Array<any> = Array<never>> {
     body?: (context: ViewModifier.Context<Content, Params>) => TemplateResult
-    updateView?: (
+
+    onAppear?: (context: ViewModifier.Context<Content, Params>) => void
+    onUpdate?: (
         context: ViewModifier.Context<Content, Params>
-    ) => TemplateResult | undefined | void
+    ) => TemplateResult | undefined | symbol | void
 }
 
 export type Modifier<Params extends Array<any>> = (...args: Params) => DirectiveResult
@@ -40,6 +42,7 @@ export function modifier<Content extends Element, Params extends Array<any> = Ar
 ): Modifier<Params> {
     return directive(
         class extends Directive {
+            #hasAppeared = false
             mod = new Modifier()
 
             constructor(partInfo: PartInfo) {
@@ -49,16 +52,25 @@ export function modifier<Content extends Element, Params extends Array<any> = Ar
                 }
             }
 
-            update(_part: ElementPart, props: Params): void | TemplateResult | undefined {
-                let result = this.mod.updateView?.({
-                    content: _part.element as Content,
-                    parameters: props,
-                })
-                if (!result)
-                    result = this.mod.body?.({
-                        content: _part.element as Content,
+            update(_part: ElementPart, props: Params) {
+                if (!this.#hasAppeared) {
+                    this.mod.onAppear?.({
+                        target: _part.element as Content,
                         parameters: props,
                     })
+                    this.#hasAppeared = true
+                }
+
+                let result =
+                    this.mod.body?.({
+                        target: _part.element as Content,
+                        parameters: props,
+                    }) ||
+                    this.mod.onUpdate?.({
+                        target: _part.element as Content,
+                        parameters: props,
+                    })
+
                 return result
             }
 

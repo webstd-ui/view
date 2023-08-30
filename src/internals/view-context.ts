@@ -25,6 +25,8 @@ interface ViewContextEventMap {
 
 const ViewContextEventTarget = typedEventTarget<ViewContextEventMap>()
 
+// TODO: Add some sort of shared metadata object to the various view events
+
 export class ViewContext extends ViewContextEventTarget {
     addInitializer(callback: (context: { view: View; element: HTMLElement }) => void) {
         this.addEventListener("initialize", callback)

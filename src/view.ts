@@ -80,6 +80,8 @@ function buildElementFromView(View: ViewConstructor): CustomElementConstructor {
         }
 
         connectedCallback() {
+            this.#context.dispatchEvent(new ViewAppearEvent(this.#view, this))
+
             this.#view.onAppear?.()
 
             // `task` only runs on the client
@@ -87,13 +89,13 @@ function buildElementFromView(View: ViewConstructor): CustomElementConstructor {
                 this.#view.task?.()
             }
 
-            this.#context.dispatchEvent(new ViewAppearEvent(this.#view, this))
+            // TODO: Figure out how to hold the initial render until all @Environment properties are settled
             this.#initializeRendering()
         }
 
         disconnectedCallback() {
-            this.#view.onDisappear?.()
             this.#context.dispatchEvent(new ViewDissapearEvent(this.#view, this))
+            this.#view.onDisappear?.()
         }
     }
 }

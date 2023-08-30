@@ -1,6 +1,9 @@
 import "./internals/symbol-metadata"
 
 export { html } from "lit-html"
+export type { HTMLTemplateResult as TemplateResult } from "lit-html"
+import { nothing } from "lit-html"
+export const EmptyView = () => nothing
 
 export type { View } from "./view"
 export { CustomElement } from "./view"
